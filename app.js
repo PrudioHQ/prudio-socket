@@ -63,6 +63,7 @@ app.get('/', function(req, res, next) {
 // linking
 require('./utils/socket')(app, io, slack, App, emoji); // socketIO logic
 require('./utils/bot')(app, slack, App); // Sets bots up
+require('./utils/client')(app, io, slack, App); // sets up endpoints
 
 // Catch errors
 app.use(function(err, req, res, next) {
