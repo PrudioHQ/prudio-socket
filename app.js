@@ -9,8 +9,8 @@ var io      = require('socket.io')(server);
 var db      = require('./utils/connection');
 
 // Body parser & CORS
-//var bodyParser = require('body-parser');
-//var cors       = require('cors');
+var bodyParser = require('body-parser');
+var cors       = require('cors');
 var emoji      = require('emoji-parser');
 
 // Debug
@@ -52,9 +52,9 @@ db.once('open', function (callback) {
     });
 });
 
-//app.enable('trust proxy');
-//app.use(bodyParser.urlencoded({ extended: false }));
-//app.use(cors());
+app.enable('trust proxy');
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cors());
 
 app.get('/', function(req, res, next) {
     return res.status(200).json({ success: true, message: "Welcome, nothing here!", server: app.get('server') });
