@@ -185,7 +185,7 @@ module.exports = function(app, io, slack, App) {
 
             function(err, body, application) {
                 if (err) {
-                    return res.status(404).json({ success: false, result: err });
+                    return res.status(200).json({ success: false, result: err });
                 }
 
                 body.messages.reverse();
@@ -253,7 +253,7 @@ module.exports = function(app, io, slack, App) {
                         }
 
                         // No channel or signature, or invalid signature/channel, get the next channel
-                        application.update({ $inc: { roomCount: 1}}, function(err, affected) {
+                        application.update({ $inc: { roomCount: 1 }}, function(err, affected) {
                             if (err) {
                                 return callback(err);
                             }
