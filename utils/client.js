@@ -356,10 +356,13 @@ module.exports = function(app, io, slack, App) {
                     // Send notification
                     function(channelName, channelId, callback) {
 
+                        console.error('Send notification function');
+
                         var text = "New help request at channel <#" + channelId + "|" + channelName + ">. Join now!";
 
                         request.post(app.get('slack_api_url') + '/chat.postMessage', { json: true, form: { token: application.slackApiToken, channel: application.notifyChannel, text: text, username: 'Prud.io', icon_url: 'http://chat.prud.io/prudio-notification-icon.png' }}, function (error, response, body) {
                             if (!error && response.statusCode === 200) {
+                                console.error('Notification sent!');
                                 return callback(null, channelName, channelId);
                             }
                             return callback('Notification message');
