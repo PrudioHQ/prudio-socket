@@ -363,6 +363,8 @@ module.exports = function(app, io, slack, App) {
                         request.post(app.get('slack_api_url') + '/chat.postMessage', { json: true, form: { token: application.slackApiToken, channel: application.notifyChannel, text: text, username: 'Prud.io', icon_url: 'http://chat.prud.io/prudio-notification-icon.png' }}, function (error, response, body) {
                             if (!error && response.statusCode === 200) {
                                 console.error('Notification sent!');
+                                console.error(body);
+
                                 return callback(null, channelName, channelId);
                             }
                             return callback('Notification message');
