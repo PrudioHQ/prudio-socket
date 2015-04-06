@@ -218,6 +218,70 @@ module.exports = function(app, io, slack, App) {
 
     });
 
+    app.post('/chat/continue', isAuthorized, function(req, res, next) {
+
+        var appid            = req.param('appid');
+        var channelId        = req.param('channel');
+        var channelName      = req.param('channelName');
+        var channelSignature = req.param('signature');
+
+        App.findOne({ appId: appid, active: true }, function(err, application) {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ success: false, message: "Error" });
+            }
+
+            if(application === null) {
+                return res.status(404).json({ success: false, message: "Not found" });
+            }
+
+            async.waterfall(
+                [
+                    function(callback) {
+
+                        // Verify if the user already has previous support (from cookies)
+                        if(channelId !== null && channelSignature !== null) {
+                            // Returning user with cookie
+                            var verify = crypto.createHmac('sha1', application.slackApiToken).update(channelId.concat(appid)).digest('hex');
+
+                            // Verify signature else it will create a new one!
+                            if(verify === channelSignature) {
+                                return callback(null, channelName, channelId);
+                            }
+                        }
+
+                        return callback("Wrong signature.");
+                    },
+
+                    // Send notification
+                    function(channelName, channelId, callback) {
+
+                        var text = "User come back at <#" + channelId + "|" + channelName + ">.";
+
+                        request.post(app.get('slack_api_url') + '/chat.postMessage', { json: true, form: { token: application.slackApiToken, channel: application.notifyChannel, text: text, username: 'Prud.io', icon_url: 'http://chat.prud.io/prudio-notification-icon.png' }}, function (error, response, body) {
+                            if (!error && response.statusCode === 200) {
+                                return callback(null, channelName, channelId);
+                            }
+                            return callback('Notification message');
+                        });
+                    },
+
+                ],
+                function(err, channelName, channelId) {
+                    if(err) {
+                        console.error(err);
+                        return res.status(404).json({ error: "Error: " + err});
+                    }
+
+                    var signature = crypto.createHmac('sha1', application.slackApiToken).update(channelId.concat(appid)).digest('hex');
+
+                    return res.status(200).json({ success: true, channel: channelId, channelName: channelName, signature: signature });
+                }
+            );
+        });
+
+    });
+
     app.post('/chat/create', isAuthorized, function(req, res, next) {
 
         var appid            = req.param('appid');
