@@ -48,6 +48,9 @@ module.exports = function(app, io, slack, App, emoji)
 					message: 'Welcome to the chat.'
 				});
 
+				// Socket connected, notify Slack that user joined the chat
+				slack.say(appId, channel, "_User connected!_");
+
 				/** sendMessage **/
 				clientSocket.on('sendMessage', function (text) {
 
@@ -130,12 +133,6 @@ module.exports = function(app, io, slack, App, emoji)
 				clientSocket.on('disconnect', function() {
 					slack.say(appId, channel, "_User disconnected!_");
 				});
-
-				// Socket connect listener, notify Slack that user joined the chat
-				clientSocket.on('connect', function() {
-					slack.say(appId, channel, "_User connected!_");
-				});
-
 			});
 		});
 	});
