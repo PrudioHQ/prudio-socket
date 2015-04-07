@@ -131,6 +131,11 @@ module.exports = function(app, io, slack, App, emoji)
 					slack.say(appId, channel, "_User disconnected!_");
 				});
 
+				// Socket connect listener, notify Slack that user joined the chat
+				clientSocket.on('connect', function() {
+					slack.say(appId, channel, "_User connected!_");
+				});
+
 			});
 		});
 	});

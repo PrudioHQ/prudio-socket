@@ -195,7 +195,7 @@ module.exports = function(app, io, slack, App) {
                 for (var i in body.messages) {
                     if (body.messages.hasOwnProperty(i)) {
                         var message = body.messages[i];
-                        if (message.type === 'message' && typeof message.subtype === 'undefined' && message.text !== '_User disconnected!_') {
+                        if (message.type === 'message' && typeof message.subtype === 'undefined' && message.text !== '_User disconnected!_' && message.text !== '_User connected!_') {
                             console.log('Channel message: %j', message);
 
                             if (message.user === application.slackInviteBot) {
@@ -256,7 +256,7 @@ module.exports = function(app, io, slack, App) {
                     // Send notification
                     function(channelName, channelId, callback) {
 
-                        var text = "User come back at <#" + channelId + "|" + channelName + ">.";
+                        var text = "User came back at <#" + channelId + "|" + channelName + ">.";
 
                         request.post(app.get('slack_api_url') + '/chat.postMessage', { json: true, form: { token: application.slackApiToken, channel: application.notifyChannel, text: text, username: 'Prud.io', icon_url: 'http://chat.prud.io/prudio-notification-icon.png' }}, function (error, response, body) {
                             if (!error && response.statusCode === 200) {
