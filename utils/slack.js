@@ -164,7 +164,7 @@ var self = module.exports = {
                         } else if (message.type === 'message' && message.channel.indexOf('C') === 0 && message.subtype === 'file_share') {
 
                             console.log('File shared %j', message);
-                            var sharedMessage = {text: 'Shared a file: ' + message.file.url , channel: message.channel}
+                            var sharedMessage = { text: 'Shared a file: <a href="' + message.file.url + '" target="_blank">' + message.file.name + '</a>', channel: message.channel }
                             Bots[appid].emit('message', sharedMessage);
 
                         } else if (message.type === 'message' && message.channel.indexOf('D') === 0) {
