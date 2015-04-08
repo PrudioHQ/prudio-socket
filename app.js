@@ -36,7 +36,7 @@ if ('development' === app.get('env')) {
     app.use(errorhandler());
 }
 
-db.once('open', function (callback) {
+db.once('open', function(callback) {
     var listening = server.listen(app.get('port'), function() {
 
         // keep emoji-images in sync with the official repository
@@ -47,7 +47,7 @@ db.once('open', function (callback) {
         // Hide the console.log() function in production
         if ('production' === app.get('env')) {
             console = console || {};
-            console.log = function(){};
+            console.log = function() {};
         }
     });
 });
@@ -57,7 +57,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cors());
 
 app.get('/', function(req, res, next) {
-    return res.status(200).json({ success: true, message: "Welcome, nothing here!", server: app.get('server') });
+    return res.status(200).json({ success: true, message: 'Welcome, nothing here!', server: app.get('server') });
 });
 
 // linking

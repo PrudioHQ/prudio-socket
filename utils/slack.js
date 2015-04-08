@@ -34,6 +34,8 @@ var self = module.exports = {
 
     onlineUsers: function onlineUsers(appid) {
 
+        //jscs:disable
+        // is_bot var is comming from Slack like this.
         var users = Users.where(function(obj) {
             return obj.appid === appid &&
             obj.user.presence === 'active' &&
@@ -41,6 +43,7 @@ var self = module.exports = {
             obj.user.is_bot === false &&
             obj.user.deleted === false;
         });
+        //jscs:enable
 
         return users;
     },
@@ -253,12 +256,12 @@ var self = module.exports = {
         }
 
         var data = {
-            "type":    "message",
-            "channel": channel, //D... or C....
-            "user":    Bots[appid].nick,
-            "text":    message,
-            "ts":      Date.now() + '.000000',
-            "team":    Bots[appid].team
+            'type':    'message',
+            'channel': channel, //D... or C....
+            'user':    Bots[appid].nick,
+            'text':    message,
+            'ts':      Date.now() + '.000000',
+            'team':    Bots[appid].team
         };
 
         Bots[appid].websocket.send(JSON.stringify(data), function(error) {
@@ -293,7 +296,7 @@ var self = module.exports = {
                 if (!error && response.statusCode === 200 && typeof body.ok !== 'undefined' && body.ok === true) {
                     return callback(null, body, application);
                 } else {
-                    return callback("Error fetching history");
+                    return callback('Error fetching history');
                 }
             });
     },
