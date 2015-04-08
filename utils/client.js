@@ -418,7 +418,6 @@ module.exports = function(app, io, slack, App) {
                         }
 
                         var info     = JSON.parse(userInfo);
-                        var personal = JSON.parse(settings);
 
                         var purpose = 'Help!' +
                         '\nURL: ' + info.url + ' (' + req.ip + ')' +

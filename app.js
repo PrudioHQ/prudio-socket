@@ -14,7 +14,7 @@ var cors       = require('cors');
 var emoji      = require('emoji-parser');
 
 // Debug
-var DEBUG = app.get('DEBUG');
+// var DEBUG = app.get('DEBUG');
 
 // Models
 var App = require('./models/app');
