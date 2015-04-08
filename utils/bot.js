@@ -7,8 +7,10 @@ module.exports = function(app, slack, App) {
         }
 
         for (var i in applications) {
-            var application = applications[i];
-            slack.connect(application);
+            if (applications.hasOwnProperty(i)) {
+                var application = applications[i];
+                slack.connect(application);
+            }
         }
     });
 };
