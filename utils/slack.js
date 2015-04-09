@@ -109,138 +109,137 @@ var self = module.exports = {
                 },
                 function(error, response, connection) {
 
-                if (!error && response.statusCode === 200 && typeof connection.ok !== 'undefined' && connection.ok === true) {
+                    if (!error && response.statusCode === 200 && typeof connection.ok !== 'undefined' && connection.ok === true) {
 
-                    Bots[appid]             = new events.EventEmitter();
-                    Bots[appid].websocket   = new WebSocket(connection.url);
-                    Bots[appid].application = application;
-                    Bots[appid].isConnected = false;
-                    Bots[appid].msgCount    = 0;
-                    Bots[appid].nick        = connection.self.id;
-                    Bots[appid].team        = connection.team.id;
-                    Bots[appid].teamDomain  = connection.team.domain;
-                    Bots[appid].bootedAt    = moment().utc().unix();
-                    Bots[appid].channels    = [];
-                    Bots[appid].errors      = [];
-
-                    console.log('T: ' + Object.size(Bots));
-
-                    // Read Channels
-                    self.addChannels(appid, connection.channels);
-
-                    // Add Users to DB
-                    self.addUsers(appid, connection.users);
-
-                    // Socket Listner
-                    Bots[appid].websocket.addListener('open', function() {
-                        console.log(appid + ' is now open');
-                    });
-
-                    Bots[appid].addListener('hello', function() {
-                        console.log(appid + ' said hello');
-                        Bots[appid].isConnected = true;
-                        //self.say(appid, self.getChannelCode(appid, 'general'), 'I\'m online!');
-                    });
-
-                    Bots[appid].websocket.addListener('close', function() {
+                        Bots[appid]             = new events.EventEmitter();
+                        Bots[appid].websocket   = new WebSocket(connection.url);
+                        Bots[appid].application = application;
                         Bots[appid].isConnected = false;
-                        Bots[appid].removeAllListeners();
-                        console.log('conn closed');
-                    });
+                        Bots[appid].msgCount    = 0;
+                        Bots[appid].nick        = connection.self.id;
+                        Bots[appid].team        = connection.team.id;
+                        Bots[appid].teamDomain  = connection.team.domain;
+                        Bots[appid].bootedAt    = moment().utc().unix();
+                        Bots[appid].channels    = [];
+                        Bots[appid].errors      = [];
 
-                    // Websocket Events
-                    Bots[appid].websocket.addListener('message', function(data) {
-                        var message = JSON.parse(data);
+                        console.log('T: ' + Object.size(Bots));
 
-                        // Gambiarra
-                        Bots[appid].msgCount++
-                        // Ignore the 2 message (last message)
-                        if (Bots[appid].msgCount === 2) {
-                            return;
-                        }
+                        // Read Channels
+                        self.addChannels(appid, connection.channels);
 
-                        if (message.type === 'message' && message.channel.indexOf('C') === 0 && typeof message.subtype === 'undefined') {
+                        // Add Users to DB
+                        self.addUsers(appid, connection.users);
 
-                            console.log('Channel message %j', message);
-                            Bots[appid].emit('message', message);
+                        // Socket Listner
+                        Bots[appid].websocket.addListener('open', function() {
+                            console.log(appid + ' is now open');
+                        });
 
-                        } else if (message.type === 'message' && message.channel.indexOf('C') === 0 && message.subtype === 'file_share') {
+                        Bots[appid].addListener('hello', function() {
+                            console.log(appid + ' said hello');
+                            Bots[appid].isConnected = true;
+                            //self.say(appid, self.getChannelCode(appid, 'general'), 'I\'m online!');
+                        });
 
-                            console.log('File shared %j', message);
-                            var sharedMessage = { text: 'Shared a file: <a href="' + message.file.url + '" target="_blank">' + message.file.name + '</a>', channel: message.channel }
-                            Bots[appid].emit('message', sharedMessage);
+                        Bots[appid].websocket.addListener('close', function() {
+                            Bots[appid].isConnected = false;
+                            Bots[appid].removeAllListeners();
+                            console.log('conn closed');
+                        });
 
-                        } else if (message.type === 'message' && message.channel.indexOf('D') === 0) {
+                        // Websocket Events
+                        Bots[appid].websocket.addListener('message', function(data) {
+                            var message = JSON.parse(data);
 
-                            console.log('Direct message %j', message);
-                            Bots[appid].emit('direct_message', message);
-
-                        } else if (message.type === 'file_public') {
-
-                            console.log('File public shared  %j', message);
-                            //Bots[appid].emit('message', message);
-
-                        } else if (message.type === 'file_shared') {
-
-                            console.log('File shared  %j', message);
-                            //Bots[appid].emit('message', message);
-
-                        } else if (message.type === 'presence_change') {
-
-                            console.log('Presence changed %s %j', message.type, message);
-
-                            var usr = Users.where(function(usr) { return usr.appid === appid && usr.user.id === message.user; })
-
-                            if (usr !== null && usr.length === 1) {
-                                usr = usr[0];
-                                usr.user.presence = message.presence;
-                                Users.update(usr);
+                            // Gambiarra
+                            Bots[appid].msgCount++;
+                            // Ignore the 2 message (last message)
+                            if (Bots[appid].msgCount === 2) {
+                                return;
                             }
 
-                        } else if (typeof message.type !== 'undefined' && message.type !== 'message') {
+                            if (message.type === 'message' && message.channel.indexOf('C') === 0 && typeof message.subtype === 'undefined') {
 
-                            console.log('Other message %s %j', message.type, message);
-                            Bots[appid].emit(message.type, message);
+                                console.log('Channel message %j', message);
+                                Bots[appid].emit('message', message);
 
-                        } else {
-                            console.log('Undefined message %j', message);
-                        }
-                    });
+                            } else if (message.type === 'message' && message.channel.indexOf('C') === 0 && message.subtype === 'file_share') {
 
-                    Bots[appid].addListener('error', function(e) {
-                        console.error(appid + ' had an error');
-                    });
+                                console.log('File shared %j', message);
+                                var sharedMessage = { text: 'Shared a file: <a href="' + message.file.url + '" target="_blank">' + message.file.name + '</a>', channel: message.channel };
+                                Bots[appid].emit('message', sharedMessage);
 
-                    // Direct message
-                    Bots[appid].addListener('direct_message', function(message) {
+                            } else if (message.type === 'message' && message.channel.indexOf('D') === 0) {
 
-                        // If command
-                        if (message.text.indexOf('!') === 0 && message.text.length > 1) {
-                            var command = message.text.substring(1, message.text.length);
+                                console.log('Direct message %j', message);
+                                Bots[appid].emit('direct_message', message);
 
-                            console.log('It\'s a command: ' + command);
+                            } else if (message.type === 'file_public') {
 
-                            if (command === 'time') {
-                                self.say(appid, message.channel, '_It\'s now: *' + moment().utc().format() + '*._');
-                            } else if (command === 'uptime') {
-                                var time = moment(Bots[appid].bootedAt, 'X').utc();
-                                self.say(appid, message.channel, '_Uptime: *' + time.fromNow() + '* @ *' + time.format() + '*._');
+                                console.log('File public shared  %j', message);
+                                //Bots[appid].emit('message', message);
+
+                            } else if (message.type === 'file_shared') {
+
+                                console.log('File shared  %j', message);
+                                //Bots[appid].emit('message', message);
+
+                            } else if (message.type === 'presence_change') {
+
+                                console.log('Presence changed %s %j', message.type, message);
+
+                                var usr = Users.where(function(usr) { return usr.appid === appid && usr.user.id === message.user; });
+
+                                if (usr !== null && usr.length === 1) {
+                                    usr = usr[0];
+                                    usr.user.presence = message.presence;
+                                    Users.update(usr);
+                                }
+
+                            } else if (typeof message.type !== 'undefined' && message.type !== 'message') {
+
+                                console.log('Other message %s %j', message.type, message);
+                                Bots[appid].emit(message.type, message);
+
                             } else {
-                                // Command not valid!
-                                self.say(appid, message.channel, '_Sorry! Couldn\'t reconize the command: *' + command + '*._');
+                                console.log('Undefined message %j', message);
+                            }
+                        });
+
+                        Bots[appid].addListener('error', function(e) {
+                            console.error(appid + ' had an error');
+                        });
+
+                        // Direct message
+                        Bots[appid].addListener('direct_message', function(message) {
+
+                            // If command
+                            if (message.text.indexOf('!') === 0 && message.text.length > 1) {
+                                var command = message.text.substring(1, message.text.length);
+
+                                console.log('It\'s a command: ' + command);
+
+                                if (command === 'time') {
+                                    self.say(appid, message.channel, '_It\'s now: *' + moment().utc().format() + '*._');
+                                } else if (command === 'uptime') {
+                                    var time = moment(Bots[appid].bootedAt, 'X').utc();
+                                    self.say(appid, message.channel, '_Uptime: *' + time.fromNow() + '* @ *' + time.format() + '*._');
+                                } else {
+                                    // Command not valid!
+                                    self.say(appid, message.channel, '_Sorry! Couldn\'t reconize the command: *' + command + '*._');
+                                }
+
+                            } else {
+                                // Reply
+                                self.say(appid, message.channel, 'You said: _' + message.text + '_');
                             }
 
-                        } else {
-                            // Reply
-                            self.say(appid, message.channel, 'You said: _' + message.text + '_');
-                        }
+                        });
 
-                    });
-
-                    return Bots[appid];
-                }
-            });
-
+                        return Bots[appid];
+                    }
+                });
         } else {
             console.log('Already connected!');
             console.log('T: ' + Object.size(Bots));
@@ -327,13 +326,12 @@ var self = module.exports = {
                 formData: formData
             }, function(error, response, body) {
 
-            if (!error && response.statusCode === 200 && typeof body.ok !== 'undefined' && body.ok === true) {
-                console.log('File (' + stream.file.name + ') Uploaded');
-            } else {
-                console.log('File (' + stream.file.name + ') Not Uploaded');
-            }
-        });
-
+                if (!error && response.statusCode === 200 && typeof body.ok !== 'undefined' && body.ok === true) {
+                    console.log('File (' + stream.file.name + ') Uploaded');
+                } else {
+                    console.log('File (' + stream.file.name + ') Not Uploaded');
+                }
+            });
     },
 
     // Disconect one websocket

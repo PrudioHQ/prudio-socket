@@ -343,7 +343,7 @@ module.exports = function(app, io, slack, App) {
                     function(channelName, channelId, callback) {
 
                         if (channelId !== null) {
-                            return callback(null, channelName, channelId, true)
+                            return callback(null, channelName, channelId, true);
                         } else {
 
                             request.post(app.get('slack_api_url') + '/channels.join',
