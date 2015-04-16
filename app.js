@@ -11,7 +11,6 @@ var db      = require('./utils/connection');
 // Body parser & CORS
 var bodyParser = require('body-parser');
 var cors       = require('cors');
-var emoji      = require('emoji-parser');
 
 // Debug
 // var DEBUG = app.get('DEBUG');
@@ -39,9 +38,6 @@ if ('development' === app.get('env')) {
 db.once('open', function(callback) {
     var listening = server.listen(app.get('port'), function() {
 
-        // keep emoji-images in sync with the official repository
-        emoji.init().update();
-
         console.log(app.get('server') + ' server listening on port ' + listening.address().port);
 
         // Hide the console.log() function in production
@@ -61,7 +57,7 @@ app.get('/', function(req, res, next) {
 });
 
 // linking
-require('./utils/socket')(app, io, slack, App, emoji); // socketIO logic
+require('./utils/socket')(app, io, slack, App); // socketIO logic
 require('./utils/bot')(app, slack, App); // Sets bots up
 require('./utils/client')(app, io, slack, App); // sets up endpoints
 

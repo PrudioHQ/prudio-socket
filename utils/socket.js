@@ -1,4 +1,4 @@
-module.exports = function(app, io, slack, App, emoji) {
+module.exports = function(app, io, slack, App) {
 
     io.of('/chat').on('connection', function(clientSocket) {
         // each client is put into a chat room restricted to max 2 clients
@@ -94,7 +94,7 @@ module.exports = function(app, io, slack, App, emoji) {
 
                     if (message.channel === channel) {
                         clientSocket.emit('message', {
-                            message: emoji.parse(message.text, 'https://chat.prud.io/emojis'),
+                            message: message.text,
                             sender: 'Other'
                         });
                     }
