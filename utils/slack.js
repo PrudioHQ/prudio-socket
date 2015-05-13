@@ -145,7 +145,8 @@ var self = module.exports = {
                         Bots[appid].websocket.addListener('close', function() {
                             Bots[appid].isConnected = false;
                             Bots[appid].removeAllListeners();
-                            console.log('conn closed');
+                            delete Bots[appid];
+                            console.log('Connection closed ' + appid);
                         });
 
                         // Websocket Events
@@ -337,12 +338,8 @@ var self = module.exports = {
     // Disconect one websocket
     disconnect: function disconnect(appid) {
 
-        if (typeof Bots[appid] === 'undefined') {
-            return true;
-        }
-
-        if (Bots[appid].isConnected === true) {
-            self.say(appid, self.getChannelCode(appid, 'general'), 'I\'m going offline!');
+        if (typeof Bots[appid] !== 'undefined') {
+            // self.say(appid, self.getChannelCode(appid, 'general'), 'I\'m going offline!');
             Bots[appid].websocket.close();
         }
 

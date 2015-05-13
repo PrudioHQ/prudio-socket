@@ -125,7 +125,7 @@ module.exports = function(app, io, slack, App) {
                 return res.status(500).json({ success: false, message: 'Error' });
             }
 
-            slack.disconnect(application.id);
+            slack.disconnect(appid);
 
             return res.status(200).json({ success: true, message: 'Disconnecting' });
         });
