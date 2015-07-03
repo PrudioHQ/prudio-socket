@@ -2,6 +2,7 @@ var async      = require('async');
 var request    = require('request'); // github.com/mikeal/request
 var formidable = require('formidable');
 var crypto     = require('crypto');
+var geoip      = require('geoip-lite');
 
 module.exports = function(app, io, slack, App) {
 
@@ -417,10 +418,17 @@ module.exports = function(app, io, slack, App) {
                             return callback(null, channelName, channelId);
                         }
 
-                        var info     = JSON.parse(userInfo);
+                        var info    = JSON.parse(userInfo);
+                        var geo     = geoip.lookup(req.ip);
+                        var geoinfo = '';
+
+                        if (geo) {
+                            geoinfo =  ' - ' + geo.city + ', ' + geo.country;
+                        }
 
                         var purpose = 'Help!' +
-                        '\nURL: ' + info.url + ' (' + req.ip + ')' +
+                        '\nURL: ' + info.url +
+                        '\n' + req.ip + geoinfo +
                         '\nBrowser: ' + info.browser + ' - ' + info.browserVersion +
                         '\nOS: ' + info.os + ' - ' + info.osVersion +
                         '\nMobile: ' + info.mobile + ' - Screen resolution: ' + info.screen;
