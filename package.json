@@ -31,7 +31,7 @@
   "devDependencies": {
     "grunt-foreman": "0.0.10",
     "jscs": "^2.3.0",
-    "pre-commit": "1.1.1"
+    "pre-commit": "1.1.2"
   },
   "pre-commit": [
     "jshint",
