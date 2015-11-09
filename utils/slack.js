@@ -3,15 +3,9 @@ var events    = require('events');
 var moment    = require('moment');
 var fs        = require('fs');
 var request   = require('request'); // github.com/mikeal/request
-var loki      = require('lokijs');
-
-var db        = new loki();
 
 // Private
 var Bots  = {};
-//var Apps = db.addCollection('Apps');
-var Users = db.addCollection('Users');
-var Channels = db.addCollection('Channels');
 
 // Size of an object
 Object.size = function(obj) {
@@ -32,55 +26,41 @@ var self = module.exports = {
         return Object.size(Bots);
     },
 
-    onlineUsers: function onlineUsers(appid) {
+    onlineUsers: function onlineUsers(application, callback) {
 
-        //jscs:disable
-        // is_bot var is comming from Slack like this.
-        var users = Users.where(function(obj) {
-            return obj.appid === appid &&
-            obj.user.presence === 'active' &&
-            obj.user.id !== 'USLACKBOT' &&
-            obj.user.is_bot === false &&
-            obj.user.deleted === false;
-        });
-        //jscs:enable
+        var formData = {
+            // Pass Slack token
+            token: application.slackApiToken,
+            // Ask for presence
+            presence: 1
+        };
 
-        return users;
-    },
+        // Sending the request
+        request.post(
+            'https://slack.com/api/users.list',
+            {
+                json: true,
+                formData: formData
+            },
 
-    addChannels: function addChannels(appid, channels) {
+            function(error, response, body) {
+                if (!error && response.statusCode === 200 && typeof body.ok !== 'undefined' && body.ok === true) {
 
-        for (var channel in channels) {
-            if (channels.hasOwnProperty(channel)) {
-                Channels.insert({ appid: appid, channel: channels[channel]});
-            }
-        }
+                    var users = [];
+                    body.members.map(function(user) {
+                        //jscs:disable
+                        // is_bot var is comming from Slack like this.
+                        if (user.is_bot == false && user.deleted == false && user.presence === 'active') {
+                            users.push(user);
+                        }
+                        //jscs:enable
+                    });
 
-        return Channels;
-    },
-
-    addUsers: function addUsers(appid, users) {
-
-        for (var user in users) {
-            if (users.hasOwnProperty(user)) {
-                Users.insert({ appid: appid, user: users[user]});
-            }
-        }
-
-        return Users;
-    },
-
-    getChannelCode: function getChannelCode(appid, name) {
-
-        var channel = Channels.where(function(obj) {
-            return obj.appid === appid && obj.channel.name === name;
-        });
-
-        if (channel !== null && channel.length === 1) {
-            return channel[0].channel.id;
-        } else {
-            return false;
-        }
+                    return callback(null, users);
+                } else {
+                    return callback('Error fetching user list');
+                }
+            });
     },
 
     isConnected: function isConnected(appid) {
@@ -124,12 +104,6 @@ var self = module.exports = {
                         Bots[appid].errors      = [];
 
                         console.log('T: ' + Object.size(Bots));
-
-                        // Read Channels
-                        self.addChannels(appid, connection.channels);
-
-                        // Add Users to DB
-                        self.addUsers(appid, connection.users);
 
                         // Socket Listner
                         Bots[appid].websocket.addListener('open', function() {
@@ -189,14 +163,6 @@ var self = module.exports = {
                             } else if (message.type === 'presence_change') {
 
                                 console.log('Presence changed %s %j', message.type, message);
-
-                                var usr = Users.where(function(usr) { return usr.appid === appid && usr.user.id === message.user; });
-
-                                if (usr !== null && usr.length === 1) {
-                                    usr = usr[0];
-                                    usr.user.presence = message.presence;
-                                    Users.update(usr);
-                                }
 
                             } else if (typeof message.type !== 'undefined' && message.type !== 'message') {
 

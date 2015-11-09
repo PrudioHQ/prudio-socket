@@ -134,16 +134,32 @@ module.exports = function(app, io, slack, App) {
 
     app.post('/app/ping', isAuthorized, function(req, res, next) {
         var appid = req.param('appid');
-        App.findOne({ appId: appid, active: true }, function(err, application) {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ success: false, message: 'Error' });
+
+        async.waterfall(
+            [
+                function(callback) {
+                    App.findOne({ appId: appid, active: true }, function(err, application) {
+                        if (err) {
+                            return callback(err);
+                        }
+
+                        return callback(null, application);
+                    });
+                },
+
+                function(application, callback) {
+                    return slack.onlineUsers(application, callback);
+                }
+            ],
+
+            function(err, users, application) {
+                if (err) {
+                    return res.status(200).json({ success: false, result: err });
+                }
+
+                return res.status(200).json({ success: true, onlineUsers: users.length, message: users.length + ' users online.' });
             }
-
-            var onlineUsers = slack.onlineUsers(application.appId);
-
-            return res.status(200).json({ success: true, onlineUsers: onlineUsers.length, message: onlineUsers.length + ' users online.' });
-        });
+        );
     });
 
     app.post('/chat/history', isAuthorized, function(req, res, next) {
