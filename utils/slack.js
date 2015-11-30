@@ -296,7 +296,8 @@ var self = module.exports = {
                 if (!error && response.statusCode === 200 && typeof body.ok !== 'undefined' && body.ok === true) {
                     console.log('File (' + stream.file.name + ') Uploaded');
                 } else {
-                    console.log('File (' + stream.file.name + ') Not Uploaded');
+                    console.log('Body: ', body);
+                    console.error('File (' + stream.file.name + ') Not Uploaded');
                 }
             });
     },

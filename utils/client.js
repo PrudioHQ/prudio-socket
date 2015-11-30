@@ -12,17 +12,14 @@ module.exports = function(app, io, slack, App) {
 
         var appid = req.param('appid');
 
-        if (appid === null) {
+        if (appid === null || appid === undefined) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        App.findOne({ appId: appid }, function(err, app) {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ success: false, message: 'Error' });
-            }
+        App.findOne({ where: { appId: appid }})
+        .then(function(app) {
 
-            if (app === null) {
+            if (app === null || app === undefined) {
                 return res.status(401).json({ success: false, message: 'Unauthorized' });
             }
 
@@ -37,6 +34,10 @@ module.exports = function(app, io, slack, App) {
             application = app;
 
             return next();
+        }).catch(function(err) {
+            console.log(err);
+
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
         });
     }
 
@@ -50,13 +51,10 @@ module.exports = function(app, io, slack, App) {
         }
 
         // TODO: use the real token
-        App.findOne({ appId: appid, slackApiToken: token }, function(err, app) {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ success: false, message: 'Error' });
-            }
+        App.findOne({ where: { appId: appid, slackApiToken: token }})
+        .then(function(app) {
 
-            if (app === null) {
+            if (app === null || app === undefined) {
                 return res.status(401).json({ success: false, message: 'Unauthorized' });
             }
 
@@ -71,13 +69,14 @@ module.exports = function(app, io, slack, App) {
             application = app;
 
             return next();
+        }).catch(function(err) {
+            console.log(err);
+
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
         });
     }
 
     app.post('/app/file-upload', isAuthorized, function(req, res, next) {
-
-        // Retrieve Prudio appid
-        var appid       = req.param('appid');
 
         // Retrieve Slack channel
         var channel     = req.param('channel');
@@ -87,64 +86,34 @@ module.exports = function(app, io, slack, App) {
 
         // Parse data from POST
         form.parse(req, function(err, fields, files) {
-            App.findOne({ appId: appid, active: true }, function(err, application) {
-                if (err) {
-                    console.error(err);
-                    return res.status(500).json({ success: false, message: 'Error' });
-                }
+            slack.uploadFile(application.slackApiToken, channel, files);
 
-                slack.uploadFile(application.slackApiToken, channel, files);
-
-                return res.status(200).json({ success: true, message: 'Uploading' });
-            });
+            return res.status(200).json({ success: true, message: 'Uploading' });
         });
 
     });
 
     // TODO: Use diferent method for authorization
     app.post('/app/connect', isAdmin, function(req, res, next) {
-        var appid            = req.param('appid');
 
-        App.findOne({ appId: appid, active: true }, function(err, application) {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ success: false, message: 'Error' });
-            }
+        slack.connect(application);
 
-            slack.connect(application);
-
-            return res.status(200).json({ success: true, message: 'Initializing' });
-        });
+        return res.status(200).json({ success: true, message: 'Initializing' });
     });
 
     // TODO: Use diferent method for authorization
     app.post('/app/disconnect', isAdmin, function(req, res, next) {
-        var appid = req.param('appid');
-        App.findOne({ appId: appid, active: true }, function(err, application) {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ success: false, message: 'Error' });
-            }
+        slack.disconnect(appid);
 
-            slack.disconnect(appid);
-
-            return res.status(200).json({ success: true, message: 'Disconnecting' });
-        });
+        return res.status(200).json({ success: true, message: 'Disconnecting' });
     });
 
     app.post('/app/ping', isAuthorized, function(req, res, next) {
-        var appid = req.param('appid');
 
         async.waterfall(
             [
                 function(callback) {
-                    App.findOne({ appId: appid, active: true }, function(err, application) {
-                        if (err) {
-                            return callback(err);
-                        }
-
-                        return callback(null, application);
-                    });
+                    return callback(null, application);
                 },
 
                 function(application, callback) {
@@ -171,13 +140,7 @@ module.exports = function(app, io, slack, App) {
         async.waterfall(
             [
                 function(callback) {
-                    App.findOne({ appId: appid, active: true }, function(err, application) {
-                        if (err) {
-                            return callback(err);
-                        }
-
-                        return callback(null, application);
-                    });
+                    return callback(null, application);
                 },
 
                 function(application, callback) {
@@ -242,71 +205,60 @@ module.exports = function(app, io, slack, App) {
         var channelName      = req.param('channelName');
         var channelSignature = req.param('signature');
 
-        App.findOne({ appId: appid, active: true }, function(err, application) {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ success: false, message: 'Error' });
-            }
+        async.waterfall(
+            [
+                function(callback) {
 
-            if (application === null) {
-                return res.status(404).json({ success: false, message: 'Not found' });
-            }
+                    // Verify if the user already has previous support (from cookies)
+                    if (channelId !== null && channelSignature !== null) {
+                        // Returning user with cookie
+                        var verify = crypto.createHmac('sha1', application.slackApiToken).update(channelId.concat(appid)).digest('hex');
 
-            async.waterfall(
-                [
-                    function(callback) {
-
-                        // Verify if the user already has previous support (from cookies)
-                        if (channelId !== null && channelSignature !== null) {
-                            // Returning user with cookie
-                            var verify = crypto.createHmac('sha1', application.slackApiToken).update(channelId.concat(appid)).digest('hex');
-
-                            // Verify signature else it will create a new one!
-                            if (verify === channelSignature) {
-                                return callback(null, channelName, channelId);
-                            }
+                        // Verify signature else it will create a new one!
+                        if (verify === channelSignature) {
+                            return callback(null, channelName, channelId);
                         }
-
-                        return callback('Wrong signature.');
-                    },
-
-                    // Send notification
-                    function(channelName, channelId, callback) {
-
-                        var text = 'User came back at <#' + channelId + '|' + channelName + '>.';
-
-                        request.post(app.get('slack_api_url') + '/chat.postMessage',
-                        {
-                            json: true,
-                            form: {
-                                token: application.slackApiToken,
-                                channel: application.notifyChannel,
-                                text: text, username: 'Prud.io',
-                                //jscs:disable
-                                icon_url: 'https://chat.prud.io/prudio-notification-icon.png'
-                                //jscs:enable
-                            }
-                        }, function(error, response, body) {
-                            if (!error && response.statusCode === 200) {
-                                return callback(null, channelName, channelId);
-                            }
-                            return callback('Notification message');
-                        });
-                    },
-
-                ],
-                function(err, channelName, channelId) {
-                    if (err) {
-                        console.error(err);
-                        return res.status(404).json({ error: 'Error: ' + err });
                     }
 
-                    var signature = crypto.createHmac('sha1', application.slackApiToken).update(channelId.concat(appid)).digest('hex');
+                    return callback('Wrong signature.');
+                },
 
-                    return res.status(200).json({ success: true, channel: channelId, channelName: channelName, signature: signature });
+                // Send notification
+                function(channelName, channelId, callback) {
+
+                    var text = 'User came back at <#' + channelId + '|' + channelName + '>.';
+
+                    request.post(app.get('slack_api_url') + '/chat.postMessage',
+                    {
+                        json: true,
+                        form: {
+                            token: application.slackApiToken,
+                            channel: application.notifyChannel,
+                            text: text, username: 'Prud.io',
+                            //jscs:disable
+                            icon_url: 'https://chat.prud.io/prudio-notification-icon.png'
+                            //jscs:enable
+                        }
+                    }, function(error, response, body) {
+                        if (!error && response.statusCode === 200) {
+                            return callback(null, channelName, channelId);
+                        }
+                        return callback('Notification message');
+                    });
+                },
+
+            ],
+            function(err, channelName, channelId) {
+                if (err) {
+                    console.error(err);
+                    return res.status(404).json({ error: 'Error: ' + err });
                 }
-            );
-        });
+
+                var signature = crypto.createHmac('sha1', application.slackApiToken).update(channelId.concat(appid)).digest('hex');
+
+                return res.status(200).json({ success: true, channel: channelId, channelName: channelName, signature: signature });
+            }
+        );
 
     });
 
@@ -319,214 +271,205 @@ module.exports = function(app, io, slack, App) {
         var userInfo         = req.param('userInfo');
         var settings         = req.param('settings');
 
-        App.findOne({ appId: appid, active: true }, function(err, application) {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ success: false, message: 'Error' });
-            }
+        async.waterfall(
+            [
+                function(callback) {
 
-            if (application === null) {
-                return res.status(404).json({ success: false, message: 'Not found' });
-            }
+                    // Verify if the user already has previous support (from cookies)
+                    if (channelId !== null && channelSignature !== null) {
+                        // Returning user with cookie
+                        var verify = crypto.createHmac('sha1', application.slackApiToken).update(channelId.concat(appid)).digest('hex');
 
-            async.waterfall(
-                [
-                    function(callback) {
-
-                        // Verify if the user already has previous support (from cookies)
-                        if (channelId !== null && channelSignature !== null) {
-                            // Returning user with cookie
-                            var verify = crypto.createHmac('sha1', application.slackApiToken).update(channelId.concat(appid)).digest('hex');
-
-                            // Verify signature else it will create a new one!
-                            if (verify === channelSignature) {
-                                return callback(null, channelName, channelId);
-                            }
+                        // Verify signature else it will create a new one!
+                        if (verify === channelSignature) {
+                            return callback(null, channelName, channelId);
                         }
+                    }
 
-                        // No channel or signature, or invalid signature/channel, get the next channel
-                        application.update({ $inc: { roomCount: 1 }}, function(err, affected) {
-                            if (err) {
-                                return callback(err);
-                            }
+                    // No channel or signature, or invalid signature/channel, get the next channel
+                    application.increment('roomCount', { by: 1 })
+                    .then(function(application) {
+                        var channelName = application.roomPrefix + application.roomCount;
 
-                            var channelName = application.roomPrefix + application.roomCount;
-                            return callback(null, channelName, null);
+                        console.log('channelName: ' + channelName);
 
-                        });
-                    },
+                        return callback(null, channelName, null);
+                    })
+                    .catch(function(err) {
+                        return callback(err);
+                    });
+                },
 
-                    // Create channel
-                    function(channelName, channelId, callback) {
+                // Create channel
+                function(channelName, channelId, callback) {
 
-                        if (channelId !== null) {
-                            return callback(null, channelName, channelId, true);
-                        } else {
+                    if (channelId !== null) {
+                        return callback(null, channelName, channelId, true);
+                    } else {
 
-                            request.post(app.get('slack_api_url') + '/channels.join',
-                            {
-                                json: true,
-                                form: {
-                                    token: application.slackApiToken,
-                                    name: channelName
-                                }
-                            }, function(error, response, body) {
-                                if (!error && response.statusCode === 200 && typeof body.channel !== 'undefined') {
-                                    return callback(null, channelName, body.channel.id, false);
-                                }
-
-                                return callback('Create Channel');
-                            });
-                        }
-                    },
-
-                    // Invite user to channel
-                    function(channelName, channelId, returning, callback) {
-                        request.post(app.get('slack_api_url') + '/channels.invite',
+                        request.post(app.get('slack_api_url') + '/channels.join',
                         {
                             json: true,
                             form: {
                                 token: application.slackApiToken,
-                                channel: channelId,
-                                user: application.slackInviteBot
+                                name: channelName
                             }
                         }, function(error, response, body) {
-                            if (!error && response.statusCode === 200) {
-                                return callback(null, channelName, channelId, returning);
+                            if (!error && response.statusCode === 200 && typeof body.channel !== 'undefined') {
+                                return callback(null, channelName, body.channel.id, false);
                             }
-                            return callback('Invite user to channel');
+
+                            return callback('Create Channel');
                         });
+                    }
+                },
+
+                // Invite user to channel
+                function(channelName, channelId, returning, callback) {
+                    request.post(app.get('slack_api_url') + '/channels.invite',
+                    {
+                        json: true,
+                        form: {
+                            token: application.slackApiToken,
+                            channel: channelId,
+                            user: application.slackInviteBot
+                        }
+                    }, function(error, response, body) {
+                        if (!error && response.statusCode === 200) {
+                            return callback(null, channelName, channelId, returning);
+                        }
+                        return callback('Invite user to channel');
+                    });
+                },
+
+                // Set topic of channel
+                function(channelName, channelId, returning, callback) {
+
+                    if (returning) {
+                        return callback(null, channelName, channelId, returning);
+                    }
+
+                    var personal = JSON.parse(settings);
+
+                    var topic = personal.name + ' (' + personal.email + ')';
+
+                    request.post(app.get('slack_api_url') + '/channels.setTopic',
+                    {
+                        json: true,
+                        form: {
+                            token: application.slackApiToken,
+                            channel: channelId,
+                            topic: topic
+                        }
                     },
-
-                    // Set topic of channel
-                    function(channelName, channelId, returning, callback) {
-
-                        if (returning) {
+                    function(error, response, body) {
+                        if (!error && response.statusCode === 200) {
                             return callback(null, channelName, channelId, returning);
                         }
 
-                        var personal = JSON.parse(settings);
+                        return callback('Set topic of channel');
+                    });
+                },
 
-                        var topic = personal.name + ' (' + personal.email + ')';
+                // Set purpose of channel
+                function(channelName, channelId, returning, callback) {
 
-                        request.post(app.get('slack_api_url') + '/channels.setTopic',
-                        {
-                            json: true,
-                            form: {
-                                token: application.slackApiToken,
-                                channel: channelId,
-                                topic: topic
-                            }
-                        },
-                        function(error, response, body) {
-                            if (!error && response.statusCode === 200) {
-                                return callback(null, channelName, channelId, returning);
-                            }
-
-                            return callback('Set topic of channel');
-                        });
-                    },
-
-                    // Set purpose of channel
-                    function(channelName, channelId, returning, callback) {
-
-                        if (returning) {
-                            return callback(null, channelName, channelId);
-                        }
-
-                        var info    = JSON.parse(userInfo);
-                        var geo     = geoip.lookup(req.ip);
-                        var geoinfo = '';
-
-                        if (geo) {
-                            geoinfo =  ' - ' + geo.city + ', ' + geo.country;
-                        }
-
-                        var purpose = 'Help!' +
-                        '\nURL: ' + info.url +
-                        '\n' + req.ip + geoinfo +
-                        '\nBrowser: ' + info.browser + ' - ' + info.browserVersion +
-                        '\nOS: ' + info.os + ' - ' + info.osVersion +
-                        '\nMobile: ' + info.mobile + ' - Screen resolution: ' + info.screen;
-
-                        request.post(app.get('slack_api_url') + '/channels.setPurpose',
-                        {
-                            json: true,
-                            form: {
-                                token: application.slackApiToken,
-                                channel: channelId,
-                                purpose: purpose
-                            }
-                        }, function(error, response, body) {
-                            if (!error && response.statusCode === 200) {
-                                return callback(null, channelName, channelId);
-                            }
-
-                            return callback('Set purpose of channel');
-                        });
-                    },
-
-                    // Leave the channel
-                    function(channelName, channelId, callback) {
-
-                        if (!application.join) {
-                            request.post(app.get('slack_api_url') + '/channels.leave',
-                            {
-                                json: true,
-                                form: {
-                                    token: application.slackApiToken,
-                                    channel: channelId
-                                }
-                            }, function(error, response, body) {
-                                if (!error && response.statusCode === 200) {
-                                    return callback(null, channelName, channelId);
-                                }
-
-                                return callback('Leave the channel');
-                            });
-                        } else {
-                            return callback(null, channelName, channelId);
-                        }
-                    },
-
-                    // Send notification
-                    function(channelName, channelId, callback) {
-
-                        var text = 'New help request at channel <#' + channelId + '|' + channelName + '>. Join now!';
-
-                        request.post(app.get('slack_api_url') + '/chat.postMessage',
-                        {
-                            json: true,
-                            form: {
-                                token: application.slackApiToken,
-                                channel: application.notifyChannel,
-                                text: text,
-                                username: 'Prud.io',
-                                //jscs:disable
-                                icon_url: 'https://chat.prud.io/prudio-notification-icon.png'
-                                //jscs:enable
-                            }
-                        }, function(error, response, body) {
-                            if (!error && response.statusCode === 200) {
-                                return callback(null, channelName, channelId);
-                            }
-                            return callback('Notification message');
-                        });
-                    },
-
-                ],
-                function(err, channelName, channelId) {
-                    if (err) {
-                        console.error(err);
-                        return res.status(404).json({ error: 'Error: ' + err });
+                    if (returning) {
+                        return callback(null, channelName, channelId);
                     }
 
-                    var signature = crypto.createHmac('sha1', application.slackApiToken).update(channelId.concat(appid)).digest('hex');
+                    var info    = JSON.parse(userInfo);
+                    var geo     = geoip.lookup(req.ip);
+                    var geoinfo = '';
 
-                    return res.status(200).json({ success: true, channel: channelId, channelName: channelName, signature: signature });
+                    if (geo) {
+                        geoinfo =  ' - ' + geo.city + ', ' + geo.country;
+                    }
+
+                    var purpose = 'Help!' +
+                    '\nURL: ' + info.url +
+                    '\n' + req.ip + geoinfo +
+                    '\nBrowser: ' + info.browser + ' - ' + info.browserVersion +
+                    '\nOS: ' + info.os + ' - ' + info.osVersion +
+                    '\nMobile: ' + info.mobile + ' - Screen resolution: ' + info.screen;
+
+                    request.post(app.get('slack_api_url') + '/channels.setPurpose',
+                    {
+                        json: true,
+                        form: {
+                            token: application.slackApiToken,
+                            channel: channelId,
+                            purpose: purpose
+                        }
+                    }, function(error, response, body) {
+                        if (!error && response.statusCode === 200) {
+                            return callback(null, channelName, channelId);
+                        }
+
+                        return callback('Set purpose of channel');
+                    });
+                },
+
+                // Leave the channel
+                function(channelName, channelId, callback) {
+
+                    if (!application.join) {
+                        request.post(app.get('slack_api_url') + '/channels.leave',
+                        {
+                            json: true,
+                            form: {
+                                token: application.slackApiToken,
+                                channel: channelId
+                            }
+                        }, function(error, response, body) {
+                            if (!error && response.statusCode === 200) {
+                                return callback(null, channelName, channelId);
+                            }
+
+                            return callback('Leave the channel');
+                        });
+                    } else {
+                        return callback(null, channelName, channelId);
+                    }
+                },
+
+                // Send notification
+                function(channelName, channelId, callback) {
+
+                    var text = 'New help request at channel <#' + channelId + '|' + channelName + '>. Join now!';
+
+                    request.post(app.get('slack_api_url') + '/chat.postMessage',
+                    {
+                        json: true,
+                        form: {
+                            token: application.slackApiToken,
+                            channel: application.notifyChannel,
+                            text: text,
+                            username: 'Prud.io',
+                            //jscs:disable
+                            icon_url: 'https://chat.prud.io/prudio-notification-icon.png'
+                            //jscs:enable
+                        }
+                    }, function(error, response, body) {
+                        if (!error && response.statusCode === 200) {
+                            return callback(null, channelName, channelId);
+                        }
+                        return callback('Notification message');
+                    });
+                },
+
+            ],
+            function(err, channelName, channelId) {
+                if (err) {
+                    console.error(err);
+                    return res.status(404).json({ error: 'Error: ' + err });
                 }
-            );
-        });
+
+                var signature = crypto.createHmac('sha1', application.slackApiToken).update(channelId.concat(appid)).digest('hex');
+
+                return res.status(200).json({ success: true, channel: channelId, channelName: channelName, signature: signature });
+            }
+        );
 
     });
 

@@ -3,12 +3,11 @@ module.exports = function(app, io, slack, App) {
     io.of('/chat').on('connection', function(clientSocket) {
         // each client is put into a chat room restricted to max 2 clients
         clientSocket.on('joinRoom', function(appId, channel, clientSignature) {
-            App.findOne({ appId: appId, active: true }, function(err, application) {
-                if (err) {
-                    console.error(err);
-                }
 
-                if (application === null) {
+            App.findOne({ where: { appId: appId, active: true }})
+            .then(function(application) {
+
+                if (application === null || application === undefined) {
                     console.error('Wrong appId.');
 
                     clientSocket.emit('serverMessage', {
@@ -131,6 +130,9 @@ module.exports = function(app, io, slack, App) {
                 clientSocket.on('disconnect', function() {
                     slack.say(appId, channel, '_User disconnected!_');
                 });
+            })
+            .catch(function(err) {
+                console.error(err);
             });
         });
     });
