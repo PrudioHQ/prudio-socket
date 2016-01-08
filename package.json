@@ -8,7 +8,7 @@
     "npm": "2.x"
   },
   "dependencies": {
-    "async": "1.4.2",
+    "async": "1.5.2",
     "bcrypt": "0.8.5",
     "body-parser": "1.14.1",
     "cors": "2.7.1",
