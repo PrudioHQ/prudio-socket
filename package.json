@@ -12,7 +12,7 @@
     "bcrypt": "0.8.5",
     "body-parser": "1.14.1",
     "cors": "2.7.1",
-    "errorhandler": "1.4.2",
+    "errorhandler": "1.4.3",
     "express": "4.13.3",
     "formidable": "1.0.*",
     "geoip-lite": "^1.1.6",
